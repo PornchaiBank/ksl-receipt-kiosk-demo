@@ -70,3 +70,36 @@ html.kiosk-expanded,html.kiosk-expanded body{width:100%;height:100dvh;margin:0;p
  .quota-screen .card{padding-block:16px}
  .quota-heading{margin-bottom:8px}
 }
+
+/* Momentary keypad animation: always settles back to the pale resting color. */
+.quota-screen .keypad button{position:relative;overflow:hidden}
+.quota-screen .keypad button.key-tapped{animation:key-tap .34s ease-out}
+.quota-screen .keypad button.key-tapped::after{content:'';position:absolute;inset:12%;border:3px solid #64b98a;border-radius:50%;pointer-events:none;animation:key-ripple .4s ease-out forwards}
+@keyframes key-tap{0%{transform:scale(.9)}55%{transform:scale(1.035)}100%{transform:scale(1)}}
+@keyframes key-ripple{0%{transform:scale(.3);opacity:.65}100%{transform:scale(1.5);opacity:0}}
+/* The idle screen owns the viewport and never scrolls in either direction. */
+#screensaver{width:100%;height:100dvh;overflow:hidden;overscroll-behavior:none;touch-action:none}
+#wake-screen{height:100%;min-height:0;max-height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none;display:grid;grid-template-rows:auto minmax(0,1fr) auto;justify-items:center}
+#wake-screen .idle-content{min-width:0;min-height:0;width:100%;max-height:100%;gap:clamp(3px,1vh,10px);padding:1vh 0}
+#wake-screen .idle-top,#wake-screen .idle-bottom{min-width:0;gap:10px}
+#wake-screen .idle-title,#wake-screen .idle-subtitle{max-width:100%;overflow-wrap:anywhere}
+@media(max-height:500px){
+ #wake-screen{padding:10px 3vw}
+ #wake-screen .idle-logo{padding:5px 14px;margin-bottom:0}
+ #wake-screen .idle-logo img{width:auto;max-width:140px;height:clamp(28px,9vh,45px)}
+ #wake-screen .idle-welcome{display:none}
+ #wake-screen .idle-company{font-size:clamp(25px,8vh,38px)}
+ #wake-screen .idle-title{font-size:clamp(17px,5vh,23px);margin:0}
+ #wake-screen .idle-subtitle{display:none}
+ #wake-screen .idle-touch{margin-top:8px;padding:7px 18px;font-size:18px}
+ #wake-screen .idle-touch-sub{display:none}
+ #wake-screen .touch-icon{width:28px;height:28px}
+ #wake-screen .idle-arrow{font-size:26px}
+ #wake-screen .idle-bottom{font-size:9px}
+ #wake-screen #idle-clock{font-size:24px}
+ #wake-screen #idle-date{font-size:10px;margin-top:2px}
+}
+@media(prefers-reduced-motion:reduce){
+ .quota-screen .keypad button.key-tapped{animation:none}
+ .quota-screen .keypad button.key-tapped::after{display:none}
+}
