@@ -103,3 +103,7 @@ html.kiosk-expanded,html.kiosk-expanded body{width:100%;height:100dvh;margin:0;p
  .quota-screen .keypad button.key-tapped{animation:none}
  .quota-screen .keypad button.key-tapped::after{display:none}
 }
+
+/* Fill the viewport with one grid column; do not shrink it to content width. */
+#wake-screen{grid-template-columns:minmax(0,1fr);justify-content:stretch}
+#wake-screen .idle-content{justify-self:center;align-self:center}
