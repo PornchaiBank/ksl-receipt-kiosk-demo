@@ -26,6 +26,7 @@
   overlay.hidden=true;active=false;shell.inert=false;
   lastActivity=Date.now();schedule();
  }
+ document.addEventListener('kiosk:card-read',()=>{hide();activity()});
  wake.addEventListener('click',()=>{hide();document.querySelector('[data-key="1"]')?.focus({preventScroll:true})});
  preview.addEventListener('click',show);
  for(const event of ['pointerdown','keydown','wheel'])document.addEventListener(event,activity,{passive:true});
