@@ -24,7 +24,8 @@
    stage.style.top=`${padding+Math.max(0,(available-natural*scale)/2)}px`;
   });
  }
- new MutationObserver(fit).observe(host,{childList:true,subtree:true,characterData:true});
+ // Refit on screen replacement, not on every digit/status text update.
+ new MutationObserver(fit).observe(host,{childList:true});
  new ResizeObserver(fit).observe(host);
  document.fonts.ready.then(fit);
  window.addEventListener('resize',fit);
