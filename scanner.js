@@ -6,8 +6,8 @@
  function accept(){
   const value=buffer,bad=invalid;clear();if(!eligible()||!value&&!bad)return;
   const message=document.querySelector('#scan-feedback');
-  if(bad||!/^\d{1,10}$/.test(value)){message.textContent='บาร์โค้ดต้องเป็นเลขโควต้า 1–10 หลัก กรุณายิงใหม่';return}
-  state.inputKind='quota';state.idNumber='';state.quota=value;
+  if(bad||!/^\d{1,13}$/.test(value)){message.textContent='บาร์โค้ดต้องเป็นเลขโควต้า 1–13 หลัก กรุณายิงใหม่';return}
+  state.inputKind='barcode';state.idNumber='';state.quota=value;
   document.querySelector('#quota').value=value;document.querySelector('#error').textContent='';
   message.textContent='รับเลขโควต้าแล้ว กรุณาตรวจสอบและกดตกลง';
   document.dispatchEvent(new Event('kiosk:card-read'));
@@ -22,7 +22,7 @@
   if(e.key.length!==1){clear();return}
   e.preventDefault();e.stopImmediatePropagation();clearTimeout(timer);
   const now=Date.now();if(last&&now-last>500){buffer='';invalid=false}last=now;
-  if(!/^\d$/.test(e.key)||buffer.length>=10)invalid=true;
+  if(!/^\d$/.test(e.key)||buffer.length>=13)invalid=true;
   else buffer+=e.key;
   // Readers without an Enter/Tab suffix are accepted after a short pause.
   timer=setTimeout(accept,300);
