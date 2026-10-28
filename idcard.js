@@ -46,8 +46,17 @@
  const auth=document.createElement('form');auth.id='reader-auth';auth.autocomplete='off';
  auth.innerHTML='<label class="field">ชื่อผู้ใช้<input id="reader-user" autocomplete="off" required></label><label class="field">รหัสผ่าน<input id="reader-pass" type="password" autocomplete="new-password" required></label><div id="reader-auth-error" class="error" role="alert"></div><button class="primary full" type="submit">ยืนยันผู้ดูแล</button>';
  controls.before(auth);
- function lock(){authorized=false;controls.hidden=true;auth.hidden=false;$('.card-mock-note').hidden=true;$('#reader-user').value='';$('#reader-pass').value='';$('#reader-auth-error').textContent='';$('#bridge-token').value=''}
- auth.onsubmit=e=>{e.preventDefault();if($('#reader-user').value.trim()!=='admin'||$('#reader-pass').value!=='demo123'){$('#reader-auth-error').textContent='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';$('#reader-pass').value='';return}authorized=true;$('#reader-user').value='';$('#reader-pass').value='';auth.hidden=true;controls.hidden=false;$('.card-mock-note').hidden=false;openSettings()};
+ const adminMenu=document.createElement('div');adminMenu.id='admin-menu';adminMenu.hidden=true;
+ adminMenu.innerHTML='<button id="admin-statistics" type="button" class="primary full">▥ สถิติการใช้งานและการประเมิน</button><button id="admin-devices" type="button" class="secondary full">ตั้งค่าเครื่องอ่านบัตร / เครื่องพิมพ์</button>';
+ const statsPanel=document.createElement('section');statsPanel.id='statistics-demo';statsPanel.hidden=true;
+ const adminBack=document.createElement('button');adminBack.id='admin-back';adminBack.type='button';adminBack.className='secondary';adminBack.textContent='‹ กลับเมนูผู้ดูแล';adminBack.hidden=true;
+ controls.before(adminBack,adminMenu,statsPanel);
+ function showMenu(){if(!authorized)return;stop();controls.hidden=true;statsPanel.hidden=true;adminBack.hidden=true;adminMenu.hidden=false;dialog.classList.remove('stats-view');$('.card-mock-note').hidden=true;$('#card-title').textContent='เมนูผู้ดูแล';status('');$('#card-cancel').textContent='กลับหน้าบริการ';}
+ adminBack.onclick=showMenu;
+ $('#admin-devices').onclick=()=>{if(!authorized)return;adminMenu.hidden=true;controls.hidden=false;adminBack.hidden=false;$('.card-mock-note').hidden=false;openSettings()};
+ $('#admin-statistics').onclick=()=>{if(!authorized)return;stop();adminMenu.hidden=true;controls.hidden=true;adminBack.hidden=false;statsPanel.hidden=false;dialog.classList.add('stats-view');$('#card-title').textContent='สถิติการใช้งานและการประเมิน';status('');window.KSLStatisticsDemo.mount(statsPanel)};
+ function lock(){adminMenu.hidden=true;statsPanel.hidden=true;statsPanel.replaceChildren();adminBack.hidden=true;dialog.classList.remove('stats-view');authorized=false;controls.hidden=true;auth.hidden=false;$('.card-mock-note').hidden=true;$('#reader-user').value='';$('#reader-pass').value='';$('#reader-auth-error').textContent='';$('#bridge-token').value=''}
+ auth.onsubmit=e=>{e.preventDefault();if($('#reader-user').value.trim()!=='admin'||$('#reader-pass').value!=='demo123'){$('#reader-auth-error').textContent='ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง';$('#reader-pass').value='';return}authorized=true;$('#reader-user').value='';$('#reader-pass').value='';auth.hidden=true;showMenu()};
 
  $('#bridge-remember').style.cssText='width:20px;height:20px;min-height:0;vertical-align:middle;margin:0 6px 0 0';
  $('#card-reader-visual').hidden=true;
@@ -107,7 +116,7 @@
   status('เครื่องอ่านและเครื่องพิมพ์ตั้งค่าอิสระต่อกัน ใช้รหัสเชื่อมต่อ Bridge ร่วมกัน');
   if(token){bridgeConnected=true;void Promise.allSettled([loadReaders(),loadPrinters()])}
  }
- function open(){if(state.screen!=='quota'||state.scanOpen)return;stop();lock();$('#card-title').textContent='ยืนยันผู้ดูแล';status('กรุณาระบุชื่อผู้ใช้และรหัสผ่านก่อนเข้าตั้งค่าอุปกรณ์');$('#card-cancel').textContent='ยกเลิก';signal(true);dialog.showModal();$('#reader-user').focus()}
+ function open(){if(state.screen!=='quota'||state.scanOpen)return;stop();lock();$('#card-title').textContent='ยืนยันผู้ดูแล';status('กรุณาระบุชื่อผู้ใช้และรหัสผ่านก่อนเปิดเมนูผู้ดูแล');$('#card-cancel').textContent='ยกเลิก';signal(true);dialog.showModal();$('#reader-user').focus()}
  $('#bridge-connect').onclick=connect;$('#bridge-done').onclick=close;
  $('#bridge-reader').onchange=()=>{$('#reader-save').disabled=!$('#bridge-reader').value};$('#bridge-remember').onchange=remember;
  $('#bridge-token').oninput=()=>{stop();$('#reader-refresh').disabled=true;$('#reader-save').disabled=true;$('#bridge-reader').disabled=true;ready=false;bridgeConnected=false;$('#bridge-printer').disabled=true;$('#printer-save').disabled=true;$('#printer-refresh').disabled=true;connecting=false;$('#bridge-connect').disabled=false;$('#bridge-done').disabled=true};
@@ -117,3 +126,4 @@
  document.addEventListener('kiosk:scanner',()=>{stop();schedule()});
  document.addEventListener('visibilitychange',()=>{stop();if(document.hidden&&dialog.open)close();schedule()});window.addEventListener('pagehide',()=>{lock();stop()});$('#reader-settings').hidden=state.screen!=='quota';schedule();
 })();
+

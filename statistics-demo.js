@@ -1,0 +1,17 @@
+// Display-only sample statistics. No API requests, no device data, no stored ratings.
+(()=>{
+ const rows=[['01','บริษัท น้ำตาลขอนแก่น จำกัด (มหาชน) สาขาน้ำพอง',300,220,35,15],['02','บริษัท น้ำตาลขอนแก่น จำกัด (มหาชน) สาขาวังสะพุง',280,205,35,12],['03','บริษัท น้ำตาลนิวกว้างสุ้นหลี จำกัด',230,165,31,11],['04','บริษัท โรงงานน้ำตาลนิวกรุงไทย จำกัด',210,150,30,9],['05','บริษัท น้ำตาลท่ามะกา จำกัด',180,124,31,7]];
+ const number=x=>Number(x).toLocaleString('th-TH');
+ window.KSLStatisticsDemo={mount(root){
+ root.innerHTML=`<div class="stats-demo-label">ข้อมูลจำลอง · ยังไม่เชื่อมต่อ Server</div><div class="stats-filters"><label>บริษัท<select data-filter="company"><option value="all">ทุกบริษัท</option>${rows.map(r=>`<option value="${r[0]}">${r[1]}</option>`).join('')}</select></label><label>ช่วงเวลา<select data-filter="period"><option value="month">เดือนนี้ (ตัวอย่าง)</option><option value="week">7 วันล่าสุด (ตัวอย่าง)</option><option value="today">วันนี้ (ตัวอย่าง)</option></select></label></div><p data-slot="period" class="stats-caption"></p><div data-slot="metrics" class="stats-metrics" aria-live="polite"></div><section class="stats-panel"><h3>ความพึงพอใจต่อการใช้บริการ</h3><div data-slot="scores" class="stats-scores"></div><p class="stats-caption">เปอร์เซ็นต์คำนวณจากรายการที่ตอบแบบประเมิน</p></section><section class="stats-panel"><h3>ผลประเมินแยกตามบริษัท</h3><div class="stats-table-wrap"><table><thead><tr><th>บริษัท</th><th>ครั้งใช้งาน</th><th>ดีมาก</th><th>พอใช้</th><th>ควรปรับปรุง</th><th>ยังไม่ประเมิน</th></tr></thead><tbody data-slot="rows"></tbody></table></div></section><p class="stats-caption">ตัวอย่างช่วงวันที่ 1–28 ตุลาคม 2569 · ไม่ใช่สถิติการใช้งานจริง</p>`;
+ const find=s=>root.querySelector(s);
+ function update(){const selected=find('[data-filter="company"]').value,period=find('[data-filter="period"]').value,factor={month:1,week:.25,today:.04}[period];const totals=[0,0,0,0,0];find('[data-slot="rows"]').replaceChildren();
+ for(const row of rows.filter(r=>selected==='all'||r[0]===selected)){const [visits,good,fair,poor]=row.slice(2).map(x=>Math.round(x*factor));const values=[visits,good,fair,poor,visits-good-fair-poor];values.forEach((v,i)=>totals[i]+=v);const tr=document.createElement('tr');for(const value of [row[1],...values.map(number)]){const td=document.createElement('td');td.textContent=value;tr.append(td)}find('[data-slot="rows"]').append(tr)}
+ const [visits,good,fair,poor,unrated]=totals,rated=good+fair+poor;
+ find('[data-slot="period"]').textContent={month:'1–28 ตุลาคม 2569',week:'22–28 ตุลาคม 2569',today:'28 ตุลาคม 2569'}[period];
+ find('[data-slot="metrics"]').innerHTML=[['ครั้งใช้งาน',visits,'รอบที่ค้นหาโควต้าผ่าน'],['ตอบแบบประเมิน',rated,(100*rated/visits).toFixed(1)+'% ของครั้งใช้งาน'],['ยังไม่ประเมิน',unrated,'รวมรายการระหว่างใช้งาน']].map(([label,value,note])=>`<div class="stats-metric"><span>${label}</span><strong>${number(value)}</strong><small>${note}</small></div>`).join('');
+ find('[data-slot="scores"]').innerHTML=[['ดีมาก',good,'☺'],['พอใช้',fair,'😐'],['ควรปรับปรุง',poor,'☹']].map(([label,value,face],i)=>`<div class="stats-score stats-score-${i}"><span class="stats-face" aria-hidden="true">${face}</span><h4>${label}</h4><div class="stats-count"><strong>${number(value)}</strong><span>${(100*value/rated).toFixed(1)}%</span></div><div class="stats-track"><div style="width:${100*value/rated}%"></div></div></div>`).join('');
+ }
+ find('[data-filter="company"]').onchange=update;find('[data-filter="period"]').onchange=update;update();
+ }};
+})();
