@@ -22,9 +22,19 @@ try{
  const button=document.getElementById('print-button');
  button.disabled=false;button.textContent='พิมพ์รายงานทั้ง 2 แบบ';
  button.addEventListener('click',()=>window.print());
- if(q.get('autoprint')==='1')window.print();
+ if(q.get('embedded')==='1'&&window.parent!==window){
+  document.querySelector('.print-controls').style.display='none';
+  let requested=false;
+  const notify=type=>window.parent.postMessage({type},location.origin);
+  window.addEventListener('message',event=>{
+   if(event.origin!==location.origin||event.source!==window.parent||event.data?.type!=='ksl-report-print'||requested)return;
+   requested=true;
+   try{window.focus();window.print();notify('ksl-report-returned')}catch(error){notify('ksl-report-error')}
+  });
+  notify('ksl-report-ready');
+ }else if(q.get('autoprint')==='1')window.print();
  
  
-}catch(e){document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่'}
+}catch(e){if(window.parent!==window)window.parent.postMessage({type:'ksl-report-error'},location.origin);document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่'}
 })();
 </script></body></html>
