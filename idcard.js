@@ -38,6 +38,7 @@
  };
  const printerApi=(path,body)=>{if(!token)return Promise.reject(Error('กรุณาใส่รหัสเชื่อมต่อ Bridge ในหน้าตั้งค่าก่อน'));return api(path,body)};
  window.KSLPrinter={
+  isPaired:()=>!!token,
   prepare:()=>printerApi('printer/prepare',{}),
   capabilities:()=>printerApi('capabilities'),
   submit:job=>printerApi('print-jobs',job),
@@ -126,4 +127,5 @@
  document.addEventListener('kiosk:scanner',()=>{stop();schedule()});
  document.addEventListener('visibilitychange',()=>{stop();if(document.hidden&&dialog.open)close();schedule()});window.addEventListener('pagehide',()=>{lock();stop()});$('#reader-settings').hidden=state.screen!=='quota';schedule();
 })();
+
 
