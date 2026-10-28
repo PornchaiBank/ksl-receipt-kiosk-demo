@@ -1,5 +1,5 @@
-<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KSL รายงานค่าอ้อย — ข้อมูลจำลอง</title><link rel="stylesheet" href="report.css?v=20261028-linked"><script src="report-renderer.js?v=20261028-linked"></script><script src="report-mock.js?v=20261028-linked"></script></head><body><main id="reports"></main><script>
-(()=>{
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KSL รายงานค่าอ้อย — ข้อมูลจำลอง</title><link rel="stylesheet" href="report.css?v=20261028-linked"><script src="report-renderer.js?v=20261028-linked"></script><script src="report-mock.js?v=20261028-linked"></script></head><body><div class="print-controls"><button id="print-button" disabled>กำลังเตรียมรายงาน…</button><span>เลือกเครื่องพิมพ์จริงและกดพิมพ์ · รายงานใช้ข้อมูลจำลอง</span></div><style>.print-controls{padding:12px;display:flex;gap:16px;align-items:center;font-family:sans-serif}.print-controls button{padding:12px 24px;cursor:pointer}@media print{.print-controls{display:none!important}}</style><main id="reports"></main><script>
+(async()=>{
 
 try{
  const q=new URLSearchParams(location.search),codes=['KKS','WSP','NKS','NKT','TMK'];
@@ -16,6 +16,13 @@ try{
  d.receipt.payments.forEach((p,i)=>{p.period=d.period;p.date=date(last);p.documentNo='DEMO-PAY-'+d.period+'-'+(i+1)});
  d.deliveries.forEach((r,i)=>{r.date=date(first+i%(last-first+1));r.ticketNo='DM'+d.period+String(i+1).padStart(4,'0')});
  document.getElementById('reports').innerHTML=KSLReport.receipt(d)+KSLReport.delivery(d);
+ await document.fonts.ready;
+ await Promise.all(Array.from(document.images).map(img=>img.decode?img.decode().catch(()=>{}):Promise.resolve()));
+ await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ const button=document.getElementById('print-button');
+ button.disabled=false;button.textContent='พิมพ์รายงานทั้ง 2 แบบ';
+ button.addEventListener('click',()=>window.print());
+ if(q.get('autoprint')==='1')window.print();
  
  
 }catch(e){document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่'}
