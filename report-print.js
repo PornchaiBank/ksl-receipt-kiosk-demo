@@ -1,4 +1,4 @@
-// Silent output requires Chrome launched by Start-KSL.vbs with --kiosk-printing.
+// Silent output requires Chrome launched by Start-KSL.cmd with --kiosk-printing.
 // afterprint is not physical-printer confirmation: the user confirms receipt.
 (()=>{
 let frame=null,timeout=null,requested=false,preparing=false,generation=0;
@@ -9,7 +9,7 @@ function cleanup(){generation++;preparing=false;clearTimeout(timeout);timeout=nu
 async function print(){
  if(frame||preparing)return;
  controls(false,false);
- if(!silent){status('กรุณาเปิดเว็บด้วย Start-KSL.vbs รุ่นพิมพ์อัตโนมัติบน Windows และเลือกเครื่องพิมพ์ในหน้าตั้งค่าก่อนใช้งาน');controls(false,true);return}
+ if(!silent){status('หน้านี้ยังไม่ได้เปิดในโหมดพิมพ์อัตโนมัติ กรุณาปิดหน้าต่าง KSL แล้วเปิด Start-KSL.cmd จากโฟลเดอร์ Bridge ห้ามเปิดจากลิงก์เว็บทั่วไป');controls(false,true);return}
  const g=generation;preparing=true;status('กำลังตรวจสอบเครื่องพิมพ์ที่บันทึกไว้');
  try{if(!window.KSLPrinter)throw Error('กรุณาเปิดหน้าตั้งค่าเพื่อเชื่อมต่อเครื่องพิมพ์');const result=await window.KSLPrinter.prepare();if(g!==generation||state.screen!=='printing')return;status('เครื่องพิมพ์: '+result.selectedPrinter)}
  catch(e){if(g===generation){preparing=false;status(e.message);controls(false,true)}return}
