@@ -12,7 +12,7 @@
  function show(){
   if(state.screen!=='quota'||state.scanOpen||active)return;
   clearTimeout(timer);active=true;
-  document.querySelector('#idle-company').textContent=companyInfo(state.company).name+' (รหัส '+companyInfo(state.company).code+')';
+  document.querySelector('#idle-company').textContent=companyInfo(state.company).name;
   updateClock();overlay.hidden=false;shell.inert=true;
   wake.focus({preventScroll:true});
  }
