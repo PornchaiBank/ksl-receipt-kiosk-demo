@@ -12,8 +12,8 @@ function cleanup(){generation++;clearTimeout(timer);busy=false}
 function draw(job){
  current={...current,...job};
  const name=job.printer?' · '+job.printer:'';
- if(job.status==='submitted'){status('ส่งงานเข้าระบบพิมพ์แล้ว'+name+' กรุณารับเอกสารทั้ง 2 แบบ');controls(true,true,'พิมพ์อีกครั้ง');return true}
- if(job.status==='failed'){status(job.message||'ส่งพิมพ์ไม่สำเร็จ');controls(false,true,'ลองพิมพ์ใหม่');return true}
+ if(job.status==='submitted'){status('ส่งงานเข้าระบบพิมพ์แล้ว'+name+' กรุณารับเอกสารทั้ง 2 แบบ');clearTimeout(timer);timer=setTimeout(()=>{if(state.screen==='printing'&&current?.status==='submitted'){names.forEach((_,report)=>state.prints.push({report,period:state.period,status:'submitted'}));go('rating')}},4000);return true}
+ if(job.status==='failed'){status((job.message||'ส่งพิมพ์ไม่สำเร็จ')+' กรุณาติดต่อเจ้าหน้าที่');controls(false,true,'ลองพิมพ์ใหม่');return true}
  if(job.status==='unknown'){status((job.message||'ยังยืนยันผลไม่ได้')+' กรุณาตรวจคิวเครื่องพิมพ์ก่อนพิมพ์ซ้ำ');controls(false,true,'ตรวจคิวแล้ว พิมพ์ใหม่');return true}
  status((job.status==='printing'?'กำลังส่งรายงานไปเครื่องพิมพ์':'กำลังเตรียมรายงานทั้ง 2 แบบ')+name);controls(false,false);return false;
 }
@@ -38,7 +38,7 @@ async function start(){
   const job=await window.KSLPrinter.submit({requestId:current.requestId,company:current.company,period:current.period});
   if(g!==generation)return;
   if(draw(job)){busy=false;return}timer=setTimeout(()=>poll(current.requestId,g),800);
- }catch(e){if(g!==generation)return;busy=false;status(e.message);controls(false,true)}
+ }catch(e){if(g!==generation)return;busy=false;status(e.message+' กรุณาติดต่อเจ้าหน้าที่');controls(false,true)}
 }
 function retry(){
  if(busy)return;
@@ -48,6 +48,6 @@ function retry(){
  }
  start();
 }
-document.addEventListener('kiosk:screen',()=>{if(state.screen!=='printing'){cleanup();if(state.screen==='collect')clear()}});
+document.addEventListener('kiosk:screen',()=>{if(state.screen!=='printing'){cleanup();if(state.screen==='collect'||(state.screen==='rating'&&current?.status==='submitted'))clear()}});
 window.KSLPrint={start,print:retry,cleanup};
 })();
