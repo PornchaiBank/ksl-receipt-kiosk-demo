@@ -1,6 +1,6 @@
 <!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KSL รายงานค่าอ้อย — ข้อมูลจำลอง</title><link rel="stylesheet" href="report.css?v=20261028-linked"><script src="report-renderer.js?v=20261028-linked"></script><script src="report-mock.js?v=20261028-linked"></script></head><body><main id="reports"></main><script>
 (()=>{
-const notify=type=>parent.postMessage({type},location.origin);
+
 try{
  const q=new URLSearchParams(location.search),codes=['KKS','WSP','NKS','NKT','TMK'];
  const code=codes.includes(q.get('company'))?q.get('company'):'KKS';
@@ -16,8 +16,8 @@ try{
  d.receipt.payments.forEach((p,i)=>{p.period=d.period;p.date=date(last);p.documentNo='DEMO-PAY-'+d.period+'-'+(i+1)});
  d.deliveries.forEach((r,i)=>{r.date=date(first+i%(last-first+1));r.ticketNo='DM'+d.period+String(i+1).padStart(4,'0')});
  document.getElementById('reports').innerHTML=KSLReport.receipt(d)+KSLReport.delivery(d);
- window.addEventListener('afterprint',()=>notify('ksl-print-closed'));
- Promise.resolve(document.fonts.ready).then(()=>notify('ksl-print-ready'));
-}catch(e){document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่';notify('ksl-print-error')}
+ 
+ 
+}catch(e){document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่'}
 })();
 </script></body></html>
