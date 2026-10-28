@@ -1,0 +1,23 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KSL รายงานค่าอ้อย — ข้อมูลจำลอง</title><link rel="stylesheet" href="report.css?v=20261028-linked"><script src="report-renderer.js?v=20261028-linked"></script><script src="report-mock.js?v=20261028-linked"></script></head><body><main id="reports"></main><script>
+(()=>{
+const notify=type=>parent.postMessage({type},location.origin);
+try{
+ const q=new URLSearchParams(location.search),codes=['KKS','WSP','NKS','NKT','TMK'];
+ const code=codes.includes(q.get('company'))?q.get('company'):'KKS';
+ const period=Math.min(12,Math.max(1,Number(q.get('period'))||1));
+ const d=JSON.parse(JSON.stringify(window.KSLMockReport));
+ d.companyCode=code;d.companyName=code==='KKS'?'บริษัท น้ำตาลขอนแก่น จำกัด (มหาชน)':'บริษัท '+code+' (ข้อมูลจำลอง)';
+ d.factoryName=code+' (ข้อมูลจำลอง)';d.period=String(period).padStart(2,'0');
+ d.printedAt=new Intl.DateTimeFormat('th-TH-u-ca-gregory',{dateStyle:'short',timeStyle:'medium',timeZone:'Asia/Bangkok'}).format(new Date());
+ const month=11+Math.floor((period-1)/2),year=2025+Math.floor(month/12),mo=month%12;
+ const first=period%2===1?1:16,last=period%2===1?15:new Date(year,mo+1,0).getDate();
+ const date=day=>String(day).padStart(2,'0')+'/'+String(mo+1).padStart(2,'0')+'/'+year;
+ d.receipt.documentDate=date(last);d.receipt.documentNo='DEMO-'+code+'-'+d.cropYear+'-'+d.period;
+ d.receipt.payments.forEach((p,i)=>{p.period=d.period;p.date=date(last);p.documentNo='DEMO-PAY-'+d.period+'-'+(i+1)});
+ d.deliveries.forEach((r,i)=>{r.date=date(first+i%(last-first+1));r.ticketNo='DM'+d.period+String(i+1).padStart(4,'0')});
+ document.getElementById('reports').innerHTML=KSLReport.receipt(d)+KSLReport.delivery(d);
+ window.addEventListener('afterprint',()=>notify('ksl-print-closed'));
+ Promise.resolve(document.fonts.ready).then(()=>notify('ksl-print-ready'));
+}catch(e){document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่';notify('ksl-print-error')}
+})();
+</script></body></html>
