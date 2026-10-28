@@ -24,3 +24,10 @@
 .preview-company{display:flex;align-items:center;justify-content:flex-end;gap:6px 12px;flex-wrap:wrap}
 .preview-company .company-rating-summary{margin-top:0}
 @media(max-width:600px){#companyTag{gap:4px 7px}#companyTag .company-rating-summary{font-size:10px}}
+
+/* Company-scoped statistics use the company selected during admin login. */
+#statistics-demo .stats-company-context{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;padding:14px 18px;background:#fff;border:1px solid #d9e6de;border-radius:14px}
+#statistics-demo .stats-company-context span{font-size:13px;color:#5c7566}
+#statistics-demo .stats-company-context strong{font-size:17px}
+#statistics-demo .stats-empty{padding:20px;background:#fff;border:1px solid #d9e6de;border-radius:14px}
+@media(max-width:600px){#statistics-demo .stats-company-context{align-items:flex-start;flex-direction:column;gap:3px}}
