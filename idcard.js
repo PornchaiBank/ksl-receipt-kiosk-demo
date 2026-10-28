@@ -1,11 +1,13 @@
-// Windows Card Bridge v3: settings dialog + automatic reading on screen 02.
+// Independent reader and printer configuration; shared authenticated Windows Bridge transport.
 (()=>{
  const $=s=>document.querySelector(s),dialog=$('#card-dialog'),key='ksl.reader.v1';
- let authorized=false;let token='',reader='',ready=false,epoch=0,timer,controller,lastId='',connecting=false,bridgeConnected=false;
+ let authorized=false;let token='',reader='',ready=false,epoch=0,timer,lastId='',connecting=false,bridgeConnected=false;
+ const controllers=new Set();
+ const readerStatus=t=>$('#reader-status').textContent=t;
  const status=t=>$('#card-status').textContent=t;
  const feedback=t=>{const el=$('#scan-feedback');if(el)el.textContent=t};
  const controls=document.createElement('div');
- controls.innerHTML='<label class="field">รหัสเชื่อมต่อจาก Card Bridge<input id="bridge-token" type="password" autocomplete="off" placeholder="วางรหัสเชื่อมต่อ"></label><label><input id="bridge-remember" type="checkbox"> จำการเชื่อมต่อบนเครื่องนี้</label><button id="bridge-connect" class="secondary full" type="button">ตรวจสอบการเชื่อมต่อ</button><label class="field">เครื่องอ่าน<select id="bridge-reader" disabled></select></label><button id="bridge-done" class="primary full" type="button" disabled>เสร็จสิ้นการตั้งค่า</button><button id="bridge-forget" class="textbutton full" type="button">ลืมการเชื่อมต่อ</button>';
+ controls.innerHTML='<label class="field">รหัสเชื่อมต่อจาก Card Bridge<input id="bridge-token" type="password" autocomplete="off" placeholder="วางรหัสเชื่อมต่อ"></label><label><input id="bridge-remember" type="checkbox"> จำการเชื่อมต่อบนเครื่องนี้</label><button id="bridge-connect" class="secondary full" type="button">ตรวจสอบการเชื่อมต่อ</button><h3>เครื่องอ่านบัตรประชาชน</h3><label class="field">เครื่องอ่าน<select id="bridge-reader" disabled></select></label><button id="reader-refresh" class="secondary full" type="button" disabled>โหลดรายชื่อเครื่องอ่านใหม่</button><button id="reader-save" class="secondary full" type="button" disabled>บันทึกเครื่องอ่าน</button><button id="reader-disable" class="textbutton full" type="button">ไม่ใช้เครื่องอ่านบัตร</button><p id="reader-status" class="small" role="status"></p><button id="bridge-done" class="primary full" type="button" disabled>เสร็จสิ้นการตั้งค่า</button><button id="bridge-forget" class="textbutton full" type="button">ลืมการเชื่อมต่อ</button>';
  controls.className='reader-controls';controls.style.cssText='display:grid;gap:12px';controls.hidden=true;$('#card-status').after(controls);
  const printerControls=document.createElement('div');
  printerControls.style.cssText='display:grid;gap:10px;border-top:1px solid #cddfd4;padding-top:16px';
@@ -17,7 +19,7 @@
   if(!authorized||!bridgeConnected)return;
   const g=epoch;$('#printer-refresh').disabled=true;$('#printer-save').disabled=true;$('#bridge-printer').disabled=true;
   try{const data=await api('printers');if(g!==epoch||!authorized)return;
-   const list=Array.isArray(data.printers)?data.printers:[];$('#bridge-done').disabled=false;
+   const list=Array.isArray(data.printers)?data.printers:[];$('#bridge-done').disabled=false;remember();
    selectedPrinter=data.selectedPrinter||'';
    $('#bridge-printer').replaceChildren(new Option('เลือกเครื่องพิมพ์',''),...list.filter(p=>typeof p.name==='string').map(p=>{const o=new Option(p.name,p.name);o.disabled=p.selectable===false;return o}));
    $('#bridge-printer').value=list.some(p=>p.name===selectedPrinter)?selectedPrinter:'';
@@ -43,19 +45,19 @@
 
  $('#bridge-remember').style.cssText='width:20px;height:20px;min-height:0;vertical-align:middle;margin:0 6px 0 0';
  $('#card-reader-visual').hidden=true;
- $('.card-mock-note').textContent='เปิด Run-Web.cmd บน Windows เครื่องนี้ เมื่อตั้งค่าสำเร็จ กลับหน้า 02 แล้วเสียบบัตร ระบบจะอ่านให้อัตโนมัติ';
+ $('.card-mock-note').textContent='ตั้งค่าเฉพาะอุปกรณ์ที่ต้องการใช้ได้ เครื่องอ่านใช้บันทึกเครื่องอ่าน ส่วนเครื่องพิมพ์ใช้บันทึกเครื่องพิมพ์แยกกัน';
  function saved(){try{return JSON.parse(localStorage.getItem(key)||'null')}catch{return null}}
  const pref=saved();token=typeof pref?.token==='string'?pref.token:'';reader=typeof pref?.reader==='string'?pref.reader:'';ready=!!(token&&reader);
  function remember(){try{if($('#bridge-remember').checked&&token&&(ready||bridgeConnected))localStorage.setItem(key,JSON.stringify({token,reader}));else localStorage.removeItem(key)}catch{status('ใช้งานได้ แต่ไม่สามารถจำการเชื่อมต่อในเบราว์เซอร์นี้')}}
- function stop(){epoch++;clearTimeout(timer);controller?.abort()}
+ function stop(){epoch++;clearTimeout(timer);controllers.forEach(c=>c.abort());controllers.clear()}
  function eligible(){return ready&&state.screen==='quota'&&!state.scanOpen&&!document.hidden&&!dialog.open}
  function schedule(delay=0){clearTimeout(timer);if(eligible())timer=setTimeout(poll,delay)}
  async function api(path,body){
-  const abort=new AbortController();controller=abort;const timeout=setTimeout(()=>abort.abort(),10000);
+  const abort=new AbortController();controllers.add(abort);const timeout=setTimeout(()=>abort.abort(),10000);
   try{const r=await fetch('http://127.0.0.1:17861/api/'+path,{method:body?'POST':'GET',headers:{'X-Bridge-Token':token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:abort.signal,cache:'no-store'});
    if(r.status===401||r.status===403){const e=Error('ตรวจสอบรหัสเชื่อมต่อ และเปิดโปรแกรมด้วย Run-Web.cmd');e.auth=true;throw e}
-   if(r.status===404)throw Error('404: กรุณาอัปเดต Card / Printer Bridge v4 แล้ว Build ใหม่');const data=await r.json();if(!r.ok)throw Error(data.error||'อ่านบัตรไม่สำเร็จ');return data;
-  }catch(e){if(e instanceof TypeError||e.name==='AbortError')throw Error('เชื่อมต่อเครื่องอ่านไม่ได้ กรุณาเปิด Run-Web.cmd และอนุญาตการเข้าถึงเครือข่ายภายใน');throw e}finally{clearTimeout(timeout)}
+   if(r.status===404)throw Error('404: กรุณาอัปเดต Card / Printer Bridge v4 แล้ว Build ใหม่');const data=await r.json();if(!r.ok)throw Error(data.error||'คำขอไม่สำเร็จ');return data;
+  }catch(e){if(e instanceof TypeError||e.name==='AbortError')throw Error('เชื่อมต่อ Bridge ไม่ได้ กรุณาเปิด Start-KSL.cmd และอนุญาตการเข้าถึงเครือข่ายภายใน');throw e}finally{clearTimeout(timeout);controllers.delete(abort)}
  }
  async function poll(){
   if(!eligible())return;const g=epoch;let delay=1500;
@@ -69,23 +71,41 @@
  }
  function signal(open){state.scanOpen=open;document.dispatchEvent(new Event('kiosk:scanner'))}
  function close(){lock();stop();connecting=false;$('#bridge-token').value='';if(dialog.open)dialog.close();signal(false);schedule();$('#reader-settings')?.focus({preventScroll:true})}
+ async function loadReaders(){
+  if(!authorized||!bridgeConnected)return;
+  const g=epoch;$('#reader-refresh').disabled=true;$('#reader-save').disabled=true;$('#bridge-reader').disabled=true;readerStatus('กำลังโหลดเครื่องอ่าน…');
+  try{const data=await api('readers');if(g!==epoch||!authorized)return;
+   const readers=Array.isArray(data.readers)?data.readers.filter(x=>typeof x==='string'):[];
+   $('#bridge-reader').replaceChildren(new Option('เลือกเครื่องอ่าน',''),...readers.map(x=>new Option(x,x)));
+   $('#bridge-reader').value=readers.includes(reader)?reader:'';
+   $('#bridge-reader').disabled=!readers.length;$('#reader-save').disabled=!$('#bridge-reader').value;
+   readerStatus(!readers.length?'ไม่พบเครื่องอ่าน — ยังตั้งค่าและใช้เครื่องพิมพ์ได้':reader?'บันทึกไว้: '+reader+(readers.includes(reader)?'':' — ยังไม่พบเครื่องนี้'):'เลือกเครื่องอ่าน แล้วกดบันทึก');
+   remember();
+  }catch(e){if(g===epoch)readerStatus(e.message+' · ไม่กระทบการตั้งค่าเครื่องพิมพ์')}
+  finally{if(g===epoch)$('#reader-refresh').disabled=false}
+ }
+ $('#reader-refresh').onclick=loadReaders;
+ $('#reader-save').onclick=()=>{if(!authorized||!bridgeConnected||!$('#bridge-reader').value)return;reader=$('#bridge-reader').value;ready=true;lastId='';remember();readerStatus('บันทึกเครื่องอ่านแล้ว: '+reader)};
+ $('#reader-disable').onclick=()=>{if(!authorized)return;reader='';ready=false;lastId='';$('#bridge-reader').value='';$('#reader-save').disabled=true;remember();readerStatus('ปิดใช้งานเครื่องอ่านบัตร · เครื่องพิมพ์ยังใช้งานได้')};
  async function connect(){
   if(!authorized)return;
-  stop();const g=epoch;ready=false;token=$('#bridge-token').value.trim();if(!token){status('กรุณาใส่รหัสเชื่อมต่อ');return}
-  connecting=true;$('#bridge-connect').disabled=true;$('#bridge-done').disabled=true;$('#bridge-reader').disabled=true;status('กำลังตรวจสอบเครื่องอ่าน…');
-  try{const data=await api('readers');if(g!==epoch)return;const readers=Array.isArray(data.readers)?data.readers.filter(x=>typeof x==='string'):[];
-   $('#bridge-reader').replaceChildren(...readers.map(x=>new Option(x,x)));
-   bridgeConnected=true;$('#bridge-done').disabled=false;$('#printer-refresh').disabled=false;
-   if(!readers.length){reader='';ready=false;remember();status('เชื่อมต่อ Bridge แล้ว ไม่พบเครื่องอ่านบัตร แต่ตั้งค่าเครื่องพิมพ์ได้');await loadPrinters();return}
-   reader=readers.includes(reader)?reader:readers[0];$('#bridge-reader').value=reader;ready=true;$('#bridge-reader').disabled=false;$('#bridge-done').disabled=false;remember();status('เชื่อมต่อสำเร็จ สามารถตั้งค่าเครื่องอ่านและเครื่องพิมพ์ได้');await loadPrinters();
-  }catch(e){if(g===epoch)status(e.message)}finally{if(g===epoch){connecting=false;$('#bridge-connect').disabled=false}}
+  stop();const g=epoch;token=$('#bridge-token').value.trim();if(!token){status('กรุณาใส่รหัสเชื่อมต่อ Bridge');return}
+  bridgeConnected=true;ready=!!reader;connecting=true;$('#bridge-connect').disabled=true;$('#bridge-done').disabled=false;
+  status('ตั้งค่าเครื่องอ่านและเครื่องพิมพ์แยกกันได้ ไม่จำเป็นต้องมีทั้งสองอุปกรณ์');
+  await Promise.allSettled([loadReaders(),loadPrinters()]);
+  if(g===epoch){connecting=false;$('#bridge-connect').disabled=false}
  }
- function openSettings(){if(!authorized)return;stop();$('#bridge-token').value=token;$('#bridge-remember').checked=!!saved();$('#bridge-connect').disabled=false;$('#bridge-done').disabled=!(ready||bridgeConnected);$('#bridge-reader').replaceChildren(...(reader?[new Option(reader,reader)]:[]));$('#bridge-reader').value=reader;$('#bridge-reader').disabled=!ready;$('#card-title').textContent='ตั้งค่าเครื่องอ่านและเครื่องพิมพ์';$('#card-cancel').textContent='กลับหน้ากรอกเลข';status(ready?'พร้อมอ่านอัตโนมัติเมื่อกลับหน้า 02':'ใส่รหัสเชื่อมต่อ แล้วตรวจสอบการเชื่อมต่อ');if(token){bridgeConnected=true;$('#printer-refresh').disabled=false;loadPrinters()}}
+ function openSettings(){
+  if(!authorized)return;stop();$('#bridge-token').value=token;$('#bridge-remember').checked=!!saved();$('#bridge-connect').disabled=false;$('#bridge-done').disabled=false;
+  $('#card-title').textContent='ตั้งค่าอุปกรณ์';$('#card-cancel').textContent='กลับหน้ากรอกเลข';
+  status('เครื่องอ่านและเครื่องพิมพ์ตั้งค่าอิสระต่อกัน ใช้รหัสเชื่อมต่อ Bridge ร่วมกัน');
+  if(token){bridgeConnected=true;void Promise.allSettled([loadReaders(),loadPrinters()])}
+ }
  function open(){if(state.screen!=='quota'||state.scanOpen)return;stop();lock();$('#card-title').textContent='ยืนยันผู้ดูแล';status('กรุณาระบุชื่อผู้ใช้และรหัสผ่านก่อนเข้าตั้งค่าอุปกรณ์');$('#card-cancel').textContent='ยกเลิก';signal(true);dialog.showModal();$('#reader-user').focus()}
  $('#bridge-connect').onclick=connect;$('#bridge-done').onclick=close;
- $('#bridge-reader').onchange=()=>{reader=$('#bridge-reader').value;lastId='';remember()};$('#bridge-remember').onchange=remember;
- $('#bridge-token').oninput=()=>{stop();ready=false;bridgeConnected=false;$('#bridge-printer').disabled=true;$('#printer-save').disabled=true;$('#printer-refresh').disabled=true;connecting=false;$('#bridge-connect').disabled=false;$('#bridge-done').disabled=true};
- $('#bridge-forget').onclick=()=>{stop();try{localStorage.removeItem(key)}catch{}token='';reader='';lastId='';ready=false;bridgeConnected=false;$('#bridge-printer').replaceChildren(new Option('ยังไม่ได้เชื่อมต่อ',''));$('#bridge-printer').disabled=true;$('#printer-save').disabled=true;$('#printer-refresh').disabled=true;printerStatus('');$('#bridge-token').value='';$('#bridge-remember').checked=false;$('#bridge-reader').replaceChildren();$('#bridge-reader').disabled=true;$('#bridge-done').disabled=true;$('#bridge-connect').disabled=false;status('ลืมการเชื่อมต่อแล้ว');feedback('')};
+ $('#bridge-reader').onchange=()=>{$('#reader-save').disabled=!$('#bridge-reader').value};$('#bridge-remember').onchange=remember;
+ $('#bridge-token').oninput=()=>{stop();$('#reader-refresh').disabled=true;$('#reader-save').disabled=true;$('#bridge-reader').disabled=true;ready=false;bridgeConnected=false;$('#bridge-printer').disabled=true;$('#printer-save').disabled=true;$('#printer-refresh').disabled=true;connecting=false;$('#bridge-connect').disabled=false;$('#bridge-done').disabled=true};
+ $('#bridge-forget').onclick=()=>{stop();$('#reader-refresh').disabled=true;$('#reader-save').disabled=true;readerStatus('');try{localStorage.removeItem(key)}catch{}token='';reader='';lastId='';ready=false;bridgeConnected=false;$('#bridge-printer').replaceChildren(new Option('ยังไม่ได้เชื่อมต่อ',''));$('#bridge-printer').disabled=true;$('#printer-save').disabled=true;$('#printer-refresh').disabled=true;printerStatus('');$('#bridge-token').value='';$('#bridge-remember').checked=false;$('#bridge-reader').replaceChildren();$('#bridge-reader').disabled=true;$('#bridge-done').disabled=true;$('#bridge-connect').disabled=false;status('ลืมการเชื่อมต่อแล้ว');feedback('')};
  $('#reader-settings').onclick=open;$('#card-close').onclick=close;$('#card-cancel').onclick=close;dialog.addEventListener('cancel',e=>{e.preventDefault();close()});
  document.addEventListener('kiosk:screen',()=>{$('#reader-settings').hidden=state.screen!=='quota';stop();if(dialog.open)close();schedule()});
  document.addEventListener('kiosk:scanner',()=>{stop();schedule()});
