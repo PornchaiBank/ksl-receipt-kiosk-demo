@@ -1,39 +1,53 @@
-// Silent output requires Chrome launched by Start-KSL.cmd with --kiosk-printing.
-// afterprint is not physical-printer confirmation: the user confirms receipt.
+// Bridge v5 performs native printing; ordinary Chrome/Edge needs no kiosk flags.
 (()=>{
-let frame=null,timeout=null,requested=false,preparing=false,generation=0;
-const silent=new URLSearchParams(location.search).get('printing')==='silent';
-function status(text){const el=document.querySelector('#print-status');if(el)el.textContent=text}
-function controls(done,retry){const d=document.querySelector('[data-action="print-done"]'),r=document.querySelector('[data-action="print-retry"]');if(d)d.disabled=!done;if(r)r.disabled=!retry}
-function cleanup(){generation++;preparing=false;clearTimeout(timeout);timeout=null;if(frame)frame.remove();frame=null;requested=false}
-async function print(){
- if(frame||preparing)return;
- controls(false,false);
- if(!silent){status('หน้านี้ยังไม่ได้เปิดในโหมดพิมพ์อัตโนมัติ กรุณาปิดหน้าต่าง KSL แล้วเปิด Start-KSL.cmd จากโฟลเดอร์ Bridge ห้ามเปิดจากลิงก์เว็บทั่วไป');controls(false,true);return}
- const g=generation;preparing=true;status('กำลังตรวจสอบเครื่องพิมพ์ที่บันทึกไว้');
- try{if(!window.KSLPrinter)throw Error('กรุณาเปิดหน้าตั้งค่าเพื่อเชื่อมต่อเครื่องพิมพ์');const result=await window.KSLPrinter.prepare();if(g!==generation||state.screen!=='printing')return;status('เครื่องพิมพ์: '+result.selectedPrinter)}
- catch(e){if(g===generation){preparing=false;status(e.message);controls(false,true)}return}
- preparing=false;
- frame=document.createElement('iframe');frame.title='รายงานสำหรับเครื่องพิมพ์';frame.setAttribute('aria-hidden','true');frame.tabIndex=-1;
- Object.assign(frame.style,{position:'fixed',left:'-12000px',top:'0',width:'794px',height:'1123px',border:'0',pointerEvents:'none'});
- frame.src='print-reports.html?v=20261028-printer-select&embedded=1&company='+encodeURIComponent(state.company)+'&period='+state.period;
- status('กำลังเตรียมรายงานทั้ง 2 แบบสำหรับเครื่องพิมพ์');
- document.body.appendChild(frame);
- timeout=setTimeout(()=>{if(!requested){cleanup();status('เตรียมรายงานไม่สำเร็จ กรุณาลองใหม่');controls(false,true)}},45000);
+const key='ksl.print.pending.v5';let current=null,generation=0,timer=null,busy=false;
+const status=t=>{const el=document.querySelector('#print-status');if(el)el.textContent=t};
+function controls(done,retry,label='ตรวจสอบสถานะอีกครั้ง'){
+ const d=document.querySelector('[data-action="print-done"]'),r=document.querySelector('[data-action="print-retry"]');
+ if(d)d.disabled=!done;if(r){r.disabled=!retry;r.textContent=label}
 }
-window.addEventListener('message',event=>{
- if(event.origin!==location.origin||!frame||event.source!==frame.contentWindow||state.screen!=='printing')return;
- if(event.data?.type==='ksl-report-ready'&&!requested){
-  clearTimeout(timeout);requested=true;status('กำลังส่งรายงานไปยังเครื่องพิมพ์ กรุณารับเอกสารให้ครบ');
-  frame.contentWindow.postMessage({type:'ksl-report-print'},location.origin);
- }else if(event.data?.type==='ksl-report-returned'){
-  status('ส่งคำสั่งพิมพ์แล้ว กรุณาตรวจสอบและรับเอกสารทั้ง 2 แบบ');controls(true,true);
-  // Keep the frame alive until leaving this screen; never remove it during spooling.
- }else if(event.data?.type==='ksl-report-error'){
-  cleanup();status('ไม่สามารถเตรียมหรือส่งพิมพ์รายงานได้ กรุณาตรวจสอบเครื่องพิมพ์แล้วลองใหม่');controls(false,true);
+function read(){try{return JSON.parse(sessionStorage.getItem(key)||'null')}catch{return null}}
+function clear(){sessionStorage.removeItem(key);current=null}
+function cleanup(){generation++;clearTimeout(timer);busy=false}
+function draw(job){
+ current={...current,...job};
+ const name=job.printer?' · '+job.printer:'';
+ if(job.status==='submitted'){status('ส่งงานเข้าระบบพิมพ์แล้ว'+name+' กรุณารับเอกสารทั้ง 2 แบบ');controls(true,true,'พิมพ์อีกครั้ง');return true}
+ if(job.status==='failed'){status(job.message||'ส่งพิมพ์ไม่สำเร็จ');controls(false,true,'ลองพิมพ์ใหม่');return true}
+ if(job.status==='unknown'){status((job.message||'ยังยืนยันผลไม่ได้')+' กรุณาตรวจคิวเครื่องพิมพ์ก่อนพิมพ์ซ้ำ');controls(false,true,'ตรวจคิวแล้ว พิมพ์ใหม่');return true}
+ status((job.status==='printing'?'กำลังส่งรายงานไปเครื่องพิมพ์':'กำลังเตรียมรายงานทั้ง 2 แบบ')+name);controls(false,false);return false;
+}
+async function poll(id,g){
+ if(g!==generation||state.screen!=='printing')return;
+ try{const job=await window.KSLPrinter.job(id);if(g!==generation)return;if(draw(job)){busy=false;return}timer=setTimeout(()=>poll(id,g),1000)}
+ catch(e){if(g!==generation)return;busy=false;status('ยังตรวจสอบผลไม่ได้: '+e.message+' ระบบจะไม่ส่งงานใหม่จนกว่าจะตรวจสอบรหัสเดิม');controls(false,true)}
+}
+async function start(){
+ if(busy)return;const g=++generation;busy=true;controls(false,false);
+ try{
+  if(!window.KSLPrinter)throw Error('กรุณาเชื่อมต่อ Bridge ในหน้าตั้งค่าก่อน');
+  const capabilities=await window.KSLPrinter.capabilities();if(g!==generation)return;
+  if(!capabilities.directPrint||capabilities.version<5)throw Error('กรุณาอัปเดต Bridge v5 เพื่อพิมพ์ตรงจากเว็บธรรมดา');
+  if(!capabilities.webView2Installed)throw Error('กรุณาติดตั้ง Microsoft Edge WebView2 Runtime บน Windows');
+  const pending=read();
+  if(pending&&(pending.company!==state.company||pending.period!==state.period))throw Error('ยังมีงานเดิมค้างตรวจสอบ บริษัท '+pending.company+' งวด '+pending.period+' กรุณากลับไปเลือกงวดเดิมเพื่อตรวจสอบก่อน');
+  current=pending||{requestId:crypto.randomUUID(),company:state.company,period:state.period};
+  // Persist before POST. Reconnection reuses this ID, never an automatic duplicate.
+  sessionStorage.setItem(key,JSON.stringify({requestId:current.requestId,company:current.company,period:current.period}));
+  status('กำลังส่งคำขอไปยัง Bridge');
+  const job=await window.KSLPrinter.submit({requestId:current.requestId,company:current.company,period:current.period});
+  if(g!==generation)return;
+  if(draw(job)){busy=false;return}timer=setTimeout(()=>poll(current.requestId,g),800);
+ }catch(e){if(g!==generation)return;busy=false;status(e.message);controls(false,true)}
+}
+function retry(){
+ if(busy)return;
+ if(current&&['submitted','failed','unknown'].includes(current.status)){
+  if(current.status!=='failed'&&!window.confirm('ตรวจคิวเครื่องพิมพ์และเอกสารแล้ว ต้องการส่งพิมพ์รายงานทั้ง 2 แบบใหม่หรือไม่? อาจมีเอกสารซ้ำ'))return;
+  clear();
  }
-});
-function retry(){if(requested&&!window.confirm('พิมพ์รายงานทั้ง 2 แบบซ้ำอีกครั้ง? กรุณาตรวจสอบคิวเครื่องพิมพ์ก่อน เพื่อป้องกันเอกสารซ้ำ'))return;cleanup();print()}
-document.addEventListener('kiosk:screen',()=>{if(state.screen!=='printing')cleanup()});
-window.KSLPrint={start:print,print:retry,cleanup};
+ start();
+}
+document.addEventListener('kiosk:screen',()=>{if(state.screen!=='printing'){cleanup();if(state.screen==='collect')clear()}});
+window.KSLPrint={start,print:retry,cleanup};
 })();

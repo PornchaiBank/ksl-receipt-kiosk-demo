@@ -19,6 +19,8 @@ try{
  await document.fonts.ready;
  await Promise.all(Array.from(document.images).map(img=>img.decode?img.decode().catch(()=>{}):Promise.resolve()));
  await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+ window.__kslReportReady=true;
+ if(q.get('native')==='1')document.querySelector('.print-controls').style.display='none';
  const button=document.getElementById('print-button');
  button.disabled=false;button.textContent='พิมพ์รายงานทั้ง 2 แบบ';
  button.addEventListener('click',()=>window.print());

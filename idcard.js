@@ -11,7 +11,7 @@
  controls.className='reader-controls';controls.style.cssText='display:grid;gap:12px';controls.hidden=true;$('#card-status').after(controls);
  const printerControls=document.createElement('div');
  printerControls.style.cssText='display:grid;gap:10px;border-top:1px solid #cddfd4;padding-top:16px';
- printerControls.innerHTML='<h3>เครื่องพิมพ์รายงาน</h3><label class="field">เครื่องพิมพ์<select id="bridge-printer" disabled><option value="">ยังไม่ได้เชื่อมต่อ</option></select></label><button id="printer-refresh" class="secondary full" type="button" disabled>โหลดรายชื่อเครื่องพิมพ์ใหม่</button><button id="printer-save" class="primary full" type="button" disabled>บันทึกเครื่องพิมพ์</button><p class="small">เครื่องที่เลือกจะเป็น Default Printer ของผู้ใช้ Windows คนนี้ด้วย ระบบจะจำไว้ในเครื่องตู้</p><p id="printer-status" role="status" class="small"></p>';
+ printerControls.innerHTML='<h3>เครื่องพิมพ์รายงาน</h3><label class="field">เครื่องพิมพ์<select id="bridge-printer" disabled><option value="">ยังไม่ได้เชื่อมต่อ</option></select></label><button id="printer-refresh" class="secondary full" type="button" disabled>โหลดรายชื่อเครื่องพิมพ์ใหม่</button><button id="printer-save" class="primary full" type="button" disabled>บันทึกเครื่องพิมพ์</button><p class="small">Bridge v5 ส่งพิมพ์ตรงไปยังเครื่องที่เลือก ไม่เปลี่ยน Default Printer ของ Windows</p><p id="printer-status" role="status" class="small"></p>';
  $('#bridge-done').before(printerControls);
  const printerStatus=text=>$('#printer-status').textContent=text;
  let selectedPrinter='';
@@ -25,7 +25,7 @@
    $('#bridge-printer').value=list.some(p=>p.name===selectedPrinter)?selectedPrinter:'';
    $('#bridge-printer').disabled=false;$('#printer-save').disabled=!$('#bridge-printer').value;
    printerStatus(selectedPrinter?'บันทึกไว้: '+selectedPrinter+($('#bridge-printer').value?'':' — ไม่พบเครื่องนี้ กรุณาเลือกใหม่'):'ยังไม่ได้บันทึกเครื่องพิมพ์');
-  }catch(e){if(g===epoch)printerStatus(e.message.includes('404')?'กรุณาอัปเดต Card / Printer Bridge v4 แล้ว Build ใหม่':e.message)}
+  }catch(e){if(g===epoch)printerStatus(e.message.includes('404')?'กรุณาอัปเดต Card / Printer Bridge v5 แล้ว Build ใหม่':e.message)}
   finally{if(g===epoch)$('#printer-refresh').disabled=false}
  }
  $('#printer-refresh').onclick=loadPrinters;
@@ -36,7 +36,13 @@
   try{const data=await api('printer',{printer});if(g!==epoch||!authorized)return;selectedPrinter=data.selectedPrinter;remember();printerStatus('บันทึกสำเร็จ: '+selectedPrinter+' · ใช้พิมพ์อัตโนมัติครั้งถัดไป')}
   catch(e){if(g===epoch)printerStatus(e.message)}finally{if(g===epoch)$('#printer-save').disabled=false}
  };
- window.KSLPrinter={prepare:async()=>{if(!token)throw Error('กรุณาเชื่อมต่อ Bridge และเลือกเครื่องพิมพ์ในหน้าตั้งค่าก่อน');return api('printer/prepare',{})}};
+ const printerApi=(path,body)=>{if(!token)return Promise.reject(Error('กรุณาใส่รหัสเชื่อมต่อ Bridge ในหน้าตั้งค่าก่อน'));return api(path,body)};
+ window.KSLPrinter={
+  prepare:()=>printerApi('printer/prepare',{}),
+  capabilities:()=>printerApi('capabilities'),
+  submit:job=>printerApi('print-jobs',job),
+  job:id=>printerApi('print-jobs/'+encodeURIComponent(id))
+ };
  const auth=document.createElement('form');auth.id='reader-auth';auth.autocomplete='off';
  auth.innerHTML='<label class="field">ชื่อผู้ใช้<input id="reader-user" autocomplete="off" required></label><label class="field">รหัสผ่าน<input id="reader-pass" type="password" autocomplete="new-password" required></label><div id="reader-auth-error" class="error" role="alert"></div><button class="primary full" type="submit">ยืนยันผู้ดูแล</button>';
  controls.before(auth);
@@ -56,7 +62,7 @@
   const abort=new AbortController();controllers.add(abort);const timeout=setTimeout(()=>abort.abort(),10000);
   try{const r=await fetch('http://127.0.0.1:17861/api/'+path,{method:body?'POST':'GET',headers:{'X-Bridge-Token':token,...(body?{'Content-Type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:abort.signal,cache:'no-store'});
    if(r.status===401||r.status===403){const e=Error('ตรวจสอบรหัสเชื่อมต่อ และเปิดโปรแกรมด้วย Run-Web.cmd');e.auth=true;throw e}
-   if(r.status===404)throw Error('404: กรุณาอัปเดต Card / Printer Bridge v4 แล้ว Build ใหม่');const data=await r.json();if(!r.ok)throw Error(data.error||'คำขอไม่สำเร็จ');return data;
+   if(r.status===404)throw Error('404: กรุณาอัปเดต Card / Printer Bridge v5 แล้ว Build ใหม่');const data=await r.json();if(!r.ok)throw Error(data.error||'คำขอไม่สำเร็จ');return data;
   }catch(e){if(e instanceof TypeError||e.name==='AbortError')throw Error('เชื่อมต่อ Bridge ไม่ได้ กรุณาเปิด Start-KSL.cmd และอนุญาตการเข้าถึงเครือข่ายภายใน');throw e}finally{clearTimeout(timeout);controllers.delete(abort)}
  }
  async function poll(){
