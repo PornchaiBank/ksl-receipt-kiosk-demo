@@ -1,18 +1,22 @@
 // Silent output requires Chrome launched by Start-KSL.vbs with --kiosk-printing.
 // afterprint is not physical-printer confirmation: the user confirms receipt.
 (()=>{
-let frame=null,timeout=null,requested=false;
+let frame=null,timeout=null,requested=false,preparing=false,generation=0;
 const silent=new URLSearchParams(location.search).get('printing')==='silent';
 function status(text){const el=document.querySelector('#print-status');if(el)el.textContent=text}
 function controls(done,retry){const d=document.querySelector('[data-action="print-done"]'),r=document.querySelector('[data-action="print-retry"]');if(d)d.disabled=!done;if(r)r.disabled=!retry}
-function cleanup(){clearTimeout(timeout);timeout=null;if(frame)frame.remove();frame=null;requested=false}
-function print(){
- if(frame)return;
+function cleanup(){generation++;preparing=false;clearTimeout(timeout);timeout=null;if(frame)frame.remove();frame=null;requested=false}
+async function print(){
+ if(frame||preparing)return;
  controls(false,false);
- if(!silent){status('กรุณาเปิดเว็บด้วย Start-KSL.vbs รุ่นพิมพ์อัตโนมัติบน Windows และตั้งเครื่องพิมพ์เริ่มต้นก่อนใช้งาน');controls(false,true);return}
+ if(!silent){status('กรุณาเปิดเว็บด้วย Start-KSL.vbs รุ่นพิมพ์อัตโนมัติบน Windows และเลือกเครื่องพิมพ์ในหน้าตั้งค่าก่อนใช้งาน');controls(false,true);return}
+ const g=generation;preparing=true;status('กำลังตรวจสอบเครื่องพิมพ์ที่บันทึกไว้');
+ try{if(!window.KSLPrinter)throw Error('กรุณาเปิดหน้าตั้งค่าเพื่อเชื่อมต่อเครื่องพิมพ์');const result=await window.KSLPrinter.prepare();if(g!==generation||state.screen!=='printing')return;status('เครื่องพิมพ์: '+result.selectedPrinter)}
+ catch(e){if(g===generation){preparing=false;status(e.message);controls(false,true)}return}
+ preparing=false;
  frame=document.createElement('iframe');frame.title='รายงานสำหรับเครื่องพิมพ์';frame.setAttribute('aria-hidden','true');frame.tabIndex=-1;
  Object.assign(frame.style,{position:'fixed',left:'-12000px',top:'0',width:'794px',height:'1123px',border:'0',pointerEvents:'none'});
- frame.src='print-reports.html?v=20261028-silent&embedded=1&company='+encodeURIComponent(state.company)+'&period='+state.period;
+ frame.src='print-reports.html?v=20261028-printer-select&embedded=1&company='+encodeURIComponent(state.company)+'&period='+state.period;
  status('กำลังเตรียมรายงานทั้ง 2 แบบสำหรับเครื่องพิมพ์');
  document.body.appendChild(frame);
  timeout=setTimeout(()=>{if(!requested){cleanup();status('เตรียมรายงานไม่สำเร็จ กรุณาลองใหม่');controls(false,true)}},45000);
