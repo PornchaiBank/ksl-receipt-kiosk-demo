@@ -12,7 +12,7 @@
  function show(){
   if(state.screen!=='quota'||state.scanOpen||active)return;
   clearTimeout(timer);active=true;
-  document.querySelector('#idle-company').textContent='บริษัท '+state.company;
+  document.querySelector('#idle-company').textContent=companyInfo(state.company).name+' (รหัส '+companyInfo(state.company).code+')';
   updateClock();overlay.hidden=false;shell.inert=true;
   wake.focus({preventScroll:true});
  }
@@ -39,3 +39,4 @@
  document.addEventListener('kiosk:scanner',()=>{lastActivity=Date.now();schedule()});
  preview.hidden=state.screen!=='quota';schedule();
 })();
+

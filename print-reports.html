@@ -2,12 +2,14 @@
 (async()=>{
 
 try{
+ const companies=[{"key":"KKS","code":"01","name":"บริษัท น้ำตาลขอนแก่น จำกัด (มหาชน) สาขาน้ำพอง","factory":"น้ำพอง"},{"key":"WSP","code":"02","name":"บริษัท น้ำตาลขอนแก่น จำกัด (มหาชน) สาขาวังสะพุง","factory":"วังสะพุง"},{"key":"NKS","code":"03","name":"บริษัท น้ำตาลนิวกว้างสุ้นหลี จำกัด","factory":"นิวกว้างสุ้นหลี"},{"key":"NKT","code":"04","name":"บริษัท โรงงานน้ำตาลนิวกรุงไทย จำกัด","factory":"นิวกรุงไทย"},{"key":"TMK","code":"05","name":"บริษัท น้ำตาลท่ามะกา จำกัด","factory":"ท่ามะกา"}];
  const q=new URLSearchParams(location.search),codes=['KKS','WSP','NKS','NKT','TMK'];
  const code=codes.includes(q.get('company'))?q.get('company'):'KKS';
  const period=Math.min(12,Math.max(1,Number(q.get('period'))||1));
  const d=JSON.parse(JSON.stringify(window.KSLMockReport));
- d.companyCode=code;d.companyName=code==='KKS'?'บริษัท น้ำตาลขอนแก่น จำกัด (มหาชน)':'บริษัท '+code+' (ข้อมูลจำลอง)';
- d.factoryName=code+' (ข้อมูลจำลอง)';d.period=String(period).padStart(2,'0');
+ const company=companies.find(c=>c.key===code);
+ d.companyCode=company.code;d.companyName=company.name;
+ d.factoryName=company.factory;d.period=String(period).padStart(2,'0');
  d.printedAt=new Intl.DateTimeFormat('th-TH-u-ca-gregory',{dateStyle:'short',timeStyle:'medium',timeZone:'Asia/Bangkok'}).format(new Date());
  const month=11+Math.floor((period-1)/2),year=2025+Math.floor(month/12),mo=month%12;
  const first=period%2===1?1:16,last=period%2===1?15:new Date(year,mo+1,0).getDate();
@@ -40,3 +42,4 @@ try{
 }catch(e){if(window.parent!==window)window.parent.postMessage({type:'ksl-report-error'},location.origin);document.getElementById('reports').textContent='ไม่สามารถเตรียมรายงานได้ กรุณาลองใหม่'}
 })();
 </script></body></html>
+
