@@ -16,3 +16,11 @@
 .company-rating-2{color:#b14b3e}.company-rating-2 .face-disc{fill:#ffddcc}
 @media(max-width:600px){.company-rating-summary{gap:3px 7px;font-size:10px}.company-rating-item .rating-face{width:17px;height:17px;flex-basis:17px}.company-rating-values{gap:6px}}
 
+
+/* Compact rating totals precede the company name in the header. */
+#companyTag{display:flex;justify-content:flex-end;align-items:center;gap:6px 12px;flex-wrap:wrap}
+#companyTag .company-rating-summary{margin-top:0;flex-shrink:0;justify-content:flex-end}
+#companyTag .pill{min-width:0}
+.preview-company{display:flex;align-items:center;justify-content:flex-end;gap:6px 12px;flex-wrap:wrap}
+.preview-company .company-rating-summary{margin-top:0}
+@media(max-width:600px){#companyTag{gap:4px 7px}#companyTag .company-rating-summary{font-size:10px}}
