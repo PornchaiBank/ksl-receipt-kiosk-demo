@@ -12,7 +12,10 @@
  const printerControls=document.createElement('div');
  printerControls.style.cssText='display:grid;gap:10px;border-top:1px solid #cddfd4;padding-top:16px';
  printerControls.innerHTML='<h3>เครื่องพิมพ์รายงาน</h3><label class="field">เครื่องพิมพ์<select id="bridge-printer" disabled><option value="">ยังไม่ได้เชื่อมต่อ</option></select></label><button id="printer-refresh" class="secondary full" type="button" disabled>โหลดรายชื่อเครื่องพิมพ์ใหม่</button><button id="printer-save" class="primary full" type="button" disabled>บันทึกเครื่องพิมพ์</button><p class="small">Bridge v5 ส่งพิมพ์ตรงไปยังเครื่องที่เลือก ไม่เปลี่ยน Default Printer ของ Windows</p><p id="printer-status" role="status" class="small"></p>';
- $('#bridge-done').before(printerControls);
+ const downloadControls=document.createElement('div');
+ downloadControls.id='bridge-download-panel';downloadControls.style.cssText='display:grid;gap:10px;border-top:1px solid #cddfd4;padding-top:16px';
+ downloadControls.innerHTML='<h3>ติดตั้ง Bridge บน Windows</h3><p class="small">ไฟล์เดียวรวมโปรแกรม Bridge, Run-Web.cmd และตัวติดตั้งเปิด Bridge อัตโนมัติหลัง Login</p><a id="bridge-download" class="secondary full" href="https://github.com/PornchaiBank/ksl-receipt-kiosk-demo/releases/download/bridge-v5-complete-20261029/KSL-Bridge-Windows-Complete-v5.zip">ดาวน์โหลด Bridge สำหรับ Windows (.zip · 60 MB)</a><p class="small">ดาวน์โหลดแล้วให้แตก ZIP และเปิด START-HERE-TH.txt · ไม่ต้อง Build และไม่ต้องคัดลอกจากเครื่องอื่น</p>';
+ $('#bridge-done').before(printerControls,downloadControls);
  const printerStatus=text=>$('#printer-status').textContent=text;
  let selectedPrinter='';
  async function loadPrinters(){
